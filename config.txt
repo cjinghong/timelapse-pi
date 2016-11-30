@@ -1,6 +1,6 @@
 [Capture Options]
-duration = 1400             # Duration of timelapse -- in minutes.
-interval_per_capture = 5    # Interval per capture -- in seconds. Default 5 seconds/frame
+duration = 60              # Duration of timelapse -- in minutes.
+interval_per_capture = 1    # Interval per capture -- in seconds. Default 5 seconds/frame
 
 [Camera Options]
 resolution = 1024x768       # Resolution of camera.

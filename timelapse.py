@@ -90,39 +90,56 @@ def timelapse_loop(duration, interval, pi_camera, save_to_googledrive, autoloop=
 	count = 0
 
 	# Setup exit handler. (Automatically stitch videos if exit)
-	import atexit
+	import signal
 
-	def handle_exit():
-		print("Stopping camera...")
+	def handle_exit(signum=None, frame=None):
 		print('\nAll images saved in ' + IMAGES_DIR)
-		if save_to_googledrive:
-			make_video_from_images(images_dir=IMAGES_DIR, output_dir=TIMELAPSE_DIR, images_count=count, upload_video_to_gdrive=True)
-		else:
-			make_video_from_images(images_dir=IMAGES_DIR, output_dir=TIMELAPSE_DIR, images_count=count, upload_video_to_gdrive=False)
-		if autoloop:
-			# Calls itself when it is done if autoloop is enabled.
-			timelapse_loop(duration, interval, pi_camera, save_to_googledrive, autoloop)
 
-	# Register exit handler
-	atexit.register(handle_exit)
+		if save_to_googledrive:
+			make_video_from_images(images_dir=IMAGES_DIR, output_dir=TIMELAPSE_DIR, images_count=count,
+								upload_video_to_gdrive=True)
+		else:
+			make_video_from_images(images_dir=IMAGES_DIR, output_dir=TIMELAPSE_DIR, images_count=count,
+								upload_video_to_gdrive=False)
+
+	signal.signal(signal.SIGTERM, handle_exit)
+	signal.signal(signal.SIGINT, handle_exit)
 
 	print('Timelapse running for {} minutes at 1 frames per {} second(s)'.format(duration, interval))
 	print('Taking pictures for time lapse...')
 	print('timelapse.py is running with PID of:' + str(os.getpid()))
 	print('If CTRL-C does not work, use pkill {PID} to quit and save time lapse.')
 
-	# TODO: Should do something like printing out the process or whatever
+	# Increment every 1 percentage.
+	percentage = 0.01
 	while count < max_count:
-		print('image ' + str(count))
+		# Give an output for every 1%++ of the video.
+		if count + 1 / max_count == 1:
+			print('{}% completed. ({}/{})'.format(100, count, max_count))
+		elif count / max_count >= percentage:
+			print('{}% completed. ({}/{})'.format(int(count / max_count * 100), count, max_count))
+			percentage = count / max_count * 0.01
+
 		# All files will be saved in folder according to their date.
 		camera.capture(IMAGES_DIR + 'image' + str(count) + '.jpeg')
 		count += 1
 		sleep(interval)
 
-	# Stitch images once while loop is done
-	# Any form of exit will run make_video_from_images()
 	if count >= max_count:
-		handle_exit()
+		# Only run autoloop if current loop finished naturally. DOES NOT RUN if script is interrupted or killed
+		# Note: handle_exit() will be called automatically, so theres no need to call make_video()
+		if autoloop:
+			print("Stopping camera...")
+			camera.close()
+
+			# Create path to log if not available.
+			logs_path = CURRENT_DIR + '/logs'
+			if not os.path.exists(logs_path):
+				os.mkdir(logs_path)
+
+			os.system('python {} > {} &'.format(os.path.join(CURRENT_DIR, 'autotimelapse.py'),
+												'{}/{}LOG.txt'.format(logs_path, created_timestamp)
+												))
 
 
 def main():

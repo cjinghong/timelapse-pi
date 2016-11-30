@@ -38,6 +38,10 @@ else:
 	save_to_googledrive = False
 
 autoloop = config_parser.get('Others', 'autoloop').replace(' ', '')
+
+if '#' in autoloop:
+	autoloop, comment = autoloop.split('#')
+
 if autoloop and autoloop.lower() == 'true':
 	autoloop = True
 else:
